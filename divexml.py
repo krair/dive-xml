@@ -7,7 +7,8 @@ Created on Wed Oct 28 17:04:37 2020
 """
 # TODO - Create a check to see where the XML file came from. If subsurface, write
         # new code to break apart and fit into this model
-# TODO - Softcode diver name input
+
+# TODO - Let user choose db location
 
 from lxml import etree
 import sqlite3, os, sys
@@ -45,6 +46,7 @@ cur = connection.cursor()
 counter = 0
 while True:
     myFiles, directory = getXMLlist() # filename retrieval
+    diver = 'Name'
     for item in myFiles:
         file = open(os.path.join(directory, item))
         
@@ -56,6 +58,13 @@ while True:
         print(f'Dive on {diveDict["StartTime"]} and was {int(diveDict["Duration"])//60} minutes')
         if input('Proceed to place in db? (y/n) ') != 'y': continue 
         
+        # add a name for the diver
+        diver_temp = input('Diver name (leave blank if same): ')
+        if not diver_temp:
+            continue
+        else:
+            diver = diver_temp 
+
         # Begin to push data to db
         cur.execute('SELECT id FROM DiveLog WHERE date=?',(diveDict['StartTime'],))
         log_id = cur.fetchone()
@@ -73,10 +82,10 @@ while True:
         # Write raw data blob into db
         cur.execute('Insert Into RawData(xml) values (?)',(etree.tostring(tree).decode(),))
     
-        # Write dive into dive log, get id for samples - HARD CODED 'KIT'
+        # Write dive into dive log, get id for samples
         cur.execute('''Insert OR IGNORE Into DiveLog(diver,date,avgdepth,bottomtemp,duration,maxdepth,sampleinterval,location,lat,lon,computer)
                     values (?,?,?,?,?,?,?,?,?,?,?)''',(
-                    'Kit',diveDict['StartTime'],float(diveDict['AvgDepth']),float(diveDict['BottomTemperature']),
+                    diver,diveDict['StartTime'],float(diveDict['AvgDepth']),float(diveDict['BottomTemperature']),
                     int(diveDict['Duration']),float(diveDict['MaxDepth']),int(diveDict['SampleInterval']),
                     loc[2],loc[0],loc[1],computer))
         cur.execute('SELECT id FROM DiveLog WHERE date=?',(diveDict['StartTime'],))
